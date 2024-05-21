@@ -1,16 +1,11 @@
 # creating Rasters of where the ranges of species with mineral extraction threat 
 # using a loop to reduce computational effort.
 
-library(raster)
 library(tidyverse)
 library(sf)
 library(rnaturalearth)
 library(rnaturalearthdata)
-# library(tmap)
 
-set.seed(123)
-getwd()
-setwd("IUCN_data")
 sf_use_s2(FALSE)
 
 # mollweide projection 
@@ -66,7 +61,7 @@ M_thrt <- M_thrt %>%
          # remove passage ranges 
          !SEASONAL == 4)
   
-# check all species are matched to tax names
+# check all species are matched to taxa class names
 unique(M_thrt$class)
 # find unmatched species if present 
 M_thrt %>% 
