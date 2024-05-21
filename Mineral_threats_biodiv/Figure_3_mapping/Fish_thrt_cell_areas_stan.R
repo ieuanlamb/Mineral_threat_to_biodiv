@@ -1,12 +1,14 @@
+# Calculate the area of each species range with in each global grid cell for fish species with mineral extraction threats
+# Essentially the same as 01_Mine_thrt_Areas.R however was separated to run the code on the HPC Stanage
 # creating Rasters using a loop to reduce computational effort.
+# Note: done in HPC Stanage as shape files for fish ranges were too large to run on desktop
+
 library(sp)
 library(sf)
 library(tidyverse)
 # library(tmap)
 
 set.seed(123)
-getwd()
-
 # turn s2 off
 sf_use_s2(FALSE)
 
@@ -23,8 +25,6 @@ grid <- st_make_grid(bbox, cellsize = c(111000, 111000)) %>%
   st_sf() %>% 
   mutate(cell = 1:nrow(.))
 
-# plot(grid, axes = T,pch = 3) # may look like a block if resolution is high
-
 
 ####### read data ####
 # read vertebrate taxonomy
@@ -33,7 +33,7 @@ extinct_sp <- read_csv("data/Species_Pages/Outputs/Extinct_and_EW_sp2.csv")
 extinct_sp <- extinct_sp %>% 
   pull(binomial)
 
-# Read in the mine threat data
+# Read in the mine threat species spatial range data
 Sp_ranges <- st_read("data/Species_Ranges/Data/FISH/Mine_threatened_03.04.23/data_0.shp")
 
 Sp_ranges <- Sp_ranges %>%  
@@ -48,11 +48,9 @@ Sp_ranges <- Sp_ranges %>%
 # check the validity of shapes 
 st_is_valid(Sp_ranges) %>% 
   unique()
-
 #if not valid
 Sp_ranges <- Sp_ranges %>%
   st_buffer(0)
-
 
 #  function to calculate all cells each species range overlaps with ====
 species_cell_area <- function(i){
@@ -80,8 +78,6 @@ species_cell_area <- function(i){
   
 }
 
-species_cell_area(5)
-
 start_t <- Sys.time()
 Mine_thr_cell_A <- bind_rows(lapply(1:nrow(Sp_ranges), species_cell_area))
 end_t <- Sys.time() - start_t
@@ -89,12 +85,14 @@ end_t <- Sys.time() - start_t
 write_csv(Mine_thr_cell_A, "data/Species_Ranges/Data/Fish_minetht_cell_areas2.csv")
 
 
-# check 
+# check all species have run 
 Mine_thr_cell_A <- read_csv("data/Species_Ranges/Data/Fish_minetht_cell_areas2.csv")
 
-# number of threatened species with ranges 
-length(unique(Sp_ranges$species)) #
-length(unique(Mine_thr_cell_A$species)) # 
+# number of threatened species with ranges lengths should match
+length(unique(Sp_ranges$species)) 
+length(unique(Mine_thr_cell_A$species))  
+
+# IF NOT RUN THE FOLLOWING 
 # 
 # # Find any species that are missing from the cell areas database
 # list <- unique(Sp_ranges$species)
@@ -114,5 +112,5 @@ length(unique(Mine_thr_cell_A$species)) #
 # Mine_thr_cell_A <- bind_rows(Mine_thr_cell_A, Mine_thr_cell_A_missing)
 
 #overite
-write_csv(Mine_thr_cell_A, "data/Species_Ranges/Data/Bird_minetht_cell_areas.csv")
+write_csv(Mine_thr_cell_A, "data/Species_Ranges/Data/Fish_minetht_cell_areas2.csv")
 
