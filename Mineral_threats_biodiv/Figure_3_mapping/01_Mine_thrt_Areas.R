@@ -1,11 +1,9 @@
-# creating Rasters using a loop to reduce computational effort.
+# creating Rasters of where the ranges of species with mineral extraction threat 
+# using a loop to reduce computational effort.
 
-library(sp)
 library(raster)
 library(tidyverse)
 library(sf)
-library(rgeos)
-library(rgbif)
 library(rnaturalearth)
 library(rnaturalearthdata)
 # library(tmap)
@@ -18,11 +16,9 @@ sf_use_s2(FALSE)
 # mollweide projection 
 target_crs <- st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0 +lon_0=0")
 
-
 #Make bounding box to create a grid from ----
 bbox <- st_bbox(c(xmin= -17596910, ymin= -6731548, xmax= 17596910, ymax= 8748765),
                 crs = target_crs)
-
 
 #Load global spatial Land file
 world <- ne_countries(scale = "medium", returnclass = "sf") %>%
@@ -34,23 +30,16 @@ grid <- st_make_grid(bbox, cellsize = c(111000, 111000)) %>%
   st_sf() %>% 
   mutate(cell = 1:nrow(.))
 
-# plot(grid, axes = T,pch = 3) # may look like a block if resolution is high
+# read in list of extinct species 
+extinct_sp <- read_csv("Species_Pages/Outputs/Extinct_and_EW_sp2.csv")
+# create list to remove
+extinct_sp <- extinct_sp %>% 
+  pull(binomial)
 
-
-# Get coordinates or the center of each grid cell
-world_grid_centroids <- grid %>% 
-  st_centroid() %>% 
-  mutate(x = st_coordinates(.)[,1],
-         y = st_coordinates(.)[,2]) %>% 
-  as.data.frame() %>% 
-  dplyr::select(-geometry)
-
-#
-
-################################## All mining threatened  ######################################
+################################## All mining threatened species ######################################
 # read vertebrate taxonomy
- tax <- read_csv("Species_Pages/Outputs/Chordata_taxonomy_01.03.22.csv")
-glimpse(tax)
+tax <- read_csv("Species_Pages/Outputs/Chordata_taxonomy_01.03.22.csv")
+# change class names and group fish classes 
 tax <- tax %>% 
   dplyr::select(internalTaxonId,scientificName, className) %>% 
   mutate(class = case_when(className == 'AMPHIBIA' ~ 'Amphibians',
@@ -59,23 +48,16 @@ tax <- tax %>%
                            className == 'REPTILIA' ~ 'Reptiles',
                            TRUE ~ 'Fish'))
 
-unique(tax$className)
-unique(tax$class)
 
-# read list of extinct species 
-extinct_sp <- read_csv("Species_Pages/Outputs/Extinct_and_EW_sp2.csv")
-extinct_sp <- extinct_sp %>% 
-  pull(binomial)
-# Read in the mine threat data
+# --------- Read in the mine threat spatial range data ---------
+# Downloaded from IUCN Red List https://www.iucnredlist.org/search 
+# Using search options to select for: vertebrates with any of the following threats
+# 3.1 Oil & gas drilling , 3.2 Mining and quarrying, 9.2.1 Oil spills, 9.2.2 Seepage from mining
 M_thrt <- st_read("Species_Ranges/Data/Mine_threatened_final/data_0.shp")
-
+# reproject to mollweide
 M_thrt <- M_thrt %>%
-  st_transform(crs = "+proj=cea +datum=WGS84")%>%
+  st_transform(crs = target_crs)%>%
   rename(species = SCI_NAME, id_no = ID_NO)
-
-M_thrt <- M_thrt %>%
-  st_transform(crs = target_crs)
-
 # join taxanomic group information
 M_thrt <- M_thrt %>% 
   left_join(tax, by = c("species" = "scientificName")) %>% 
@@ -86,23 +68,21 @@ M_thrt <- M_thrt %>%
   
 # check all species are matched to tax names
 unique(M_thrt$class)
-
+# find unmatched species if present 
 M_thrt %>% 
   filter(is.na(class)) %>% 
   pull(species) %>% 
   unique()
 
 # split species into taxanomic groups
-
 # check the validity of shapes 
 st_is_valid(M_thrt) %>% 
   unique()
-
-#if not valid
+# if not: fix geometries
 M_thrt <- M_thrt %>%
   st_buffer(0)
 
-# lapply function 
+# --------- function to calculate the area of each species range within each grid square ------------  
 species_cell_area <- function(i){
   # find the cells that the range intersects 
   cell_intersect <- st_intersects(M_thrt[i,], grid, sparse = TRUE) %>%
@@ -127,6 +107,7 @@ species_cell_area <- function(i){
 }
 
 start_t <- Sys.time()
+# bind results into table of all species, what grid cells their ranges overlap, and the area of their range within each grid cell
 Mine_thr_cell_A <- bind_rows(lapply(1:nrow(M_thrt), species_cell_area))
 end_t <- Sys.time() - start_t
 
