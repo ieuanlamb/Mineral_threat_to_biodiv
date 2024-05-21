@@ -72,11 +72,20 @@ ensure_multipolygons <- function(X) {
 # removing spatial data and saving as a .csv
 bird_db <- read_csv("IUCN_data/Species_Ranges/Data/BIRDS/Bird_ranges_noGeom.csv")
 
+# Set up dataframe
+ cell_Areas <- tibble(binomial = character(),
+                      cell = integer(),
+                      Areakm2 = double())
+
 # ---- cell area function ------ 
 sp_cell_area <- function(i) {
+  
   # create save points
   save <- c(20, seq(500, nrow(bird_ranges), by = 500), nrow(bird_ranges))
+
+  # load individual species range
   species_data <- bird_ranges[i,]
+  
   # fix geometries on an individual basis 
   check <- st_is_valid(species_data)
   if(check == FALSE) {
