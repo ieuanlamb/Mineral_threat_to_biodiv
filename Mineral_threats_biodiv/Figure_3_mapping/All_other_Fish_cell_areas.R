@@ -1,16 +1,19 @@
-# SES Fish raster STANAGE
+# SES Fish species range areas per cell   STANAGE
+# This script is to calculate the area of each fish species range within every global grid cell
 
-# fish SES script for HPC
+# This is essentially the same calculations a 01_Mine_thrt_Areas.R but for all species not only the ones with mineral extraction threats
+# The process took multiple runs and incorporates loops to run chunks of species at a time and then save progress
+# resulting in additional code to start the reruns from different points and commenting out of parts of code to avoid 
+# rerunning parts of the code that would be unessesary (ie species that had already been calculated)
+# NOTE: the code would be improved if the function created a csv for each species and saved in a readable way. 
+
 library(readr)
 library(dplyr)
 library(tibble)
 library(sf)
 library(lqmm)
 
-getwd()
-# setwd("X:/edwards_lab1/User/bop21ipl/IUCN_data")
-set.seed(1121995)
-
+# ----- set up ------
 target_crs <- st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0 +lon_0=0")
 
 #Make bounding box to create a grid from ----
@@ -35,15 +38,6 @@ world_grid_centroids <- grid %>%
   as.data.frame() %>% 
   dplyr::select(-geometry)
 
-
-# write into new dataframe 
-# st_write(fish_ranges_fix, file = "data/Species_Ranges/Data/FISH/Fish_data/Species_Ranges_IUCN/Fish_ranges_fixed_geometries_moll.gpkg" )
-# glimpse(fish_ranges_fix)
-
-fish_ranges <- st_read(dsn = "data/Species_Ranges/Data/FISH/Fish_Species_ranges_IUCN/Fish_ranges_fixed_geometries_moll.gpkg" )
-
-
-# remove species threatened by mining 
 # read in list of mine threatened species and taxonomy
 M_sp <- read_csv("data/Species_Pages/Chordata_Mine_threatened_assessments.csv")
 
@@ -52,53 +46,22 @@ extinct_sp <- read_csv("data/Species_Pages/Outputs/Extinct_and_EW_sp2.csv")
 extinct_sp <- extinct_sp %>% 
   pull(binomial)
 
-# remove mining threatened species from the dataset
+# -------- load fish ranges with fixed geometries --------
+# Downloaded from IUCN species ranges database https://www.iucnredlist.org/search in separate taxanomic classes; combined into one dataset and 
+# geometries fixed using sf::st_buffer(0), as these shapefiles are large this takes a while and was conducted on the HPC stanage in a seperate script
+# which can be sent upon request if useful
+fish_ranges <- st_read(dsn = "data/Species_Ranges/Data/FISH/Fish_Species_ranges_IUCN/Fish_ranges_fixed_geometries_moll.gpkg" )
+
+# remove mining threatened species from the dataset (These have already been calculated see Fish_thrt_cell_areas_stan.R)
 fish_ranges <- fish_ranges %>% 
   filter(!binomial %in% M_sp,
+         # remove seasonal ranges and extinct sp.
          seasonal != 4,
          !binomial %in% extinct_sp,)
 
 # reduce dataset to only necessary variables
 fish_ranges <- fish_ranges  %>% 
   select(rowid, binomial, geometry = geom)
-
-# reduce data to species remove species that have already been calculated
-# fish_ranges <- fish_ranges[9001:10000,]
-
-# remove species that area creating an error Gorgasia galzini
-# fish_ranges <- fish_ranges %>% 
-#   filter(binomial != "Gorgasia galzini")
-  
-
-# remove simplification as it causes an error 
-{
-# # simplyfy shapes 
-# fish_ranges <- fish_ranges  %>% 
-#   st_simplify(10000, preserveTopology = TRUE)
-# 
-# glimpse(fish_ranges)
-# 
-# check <- st_is_valid(fish_ranges)
-# unique(check)
-# fish_ranges_valid <- fish_ranges[check,]
-# fish_ranges_invalid <-fish_ranges[which(check == FALSE),] %>% 
-#   st_buffer(0)
-# 
-# fish_ranges <- rbind(fish_ranges_valid, fish_ranges_invalid) %>% 
-#   arrange(rowid)
-# st_is_valid(fish_ranges) %>% 
-#   unique()
-}
-
-# save points
-# save <- c(seq(1000, length(unique(fish_ranges$binomial)), by = 1000),length(unique(fish_ranges$binomial)))
-# save_point <- fish_ranges$binomial[save]
-
-# previous Run using for loop saved up to Altigena lippa: row = 2000, rowid = 2002
-# remove these cells from the fish data
-
-
-setdiff(fish_ranges$binomial, all_sp$binomial)
 
 # function for calculating the cell values fore each species range 
 sp_cell_area <- function(i) {
@@ -122,8 +85,6 @@ sp_cell_area <- function(i) {
            Areakm2 = as.numeric(Areakm2))%>%
     tibble()%>%
     dplyr::select( binomial, rowid, cell, Areakm2)
-  
-  
   
   return(sp_cell_Area)
 }
