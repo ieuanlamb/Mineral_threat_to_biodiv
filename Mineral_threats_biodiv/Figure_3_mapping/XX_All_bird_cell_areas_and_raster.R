@@ -1,17 +1,17 @@
 # SES threat raster for birds certainty raster calculation 
+# 
 
-library(sp)
+
 library(readr)
 library(dplyr)
 library(tibble)
 library(sf)
 library(lqmm)
+library(gdalUtilities)
 
-getwd()
-setwd("X:/edwards_lab1/User/bop21ipl")
-set.seed(1121995)
 sf_use_s2(FALSE)
 
+# ------- Set up -------
 target_crs <- st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0 +lon_0=0")
 
 #Make bounding box to create a grid from ----
@@ -36,12 +36,6 @@ world_grid_centroids <- grid %>%
   as.data.frame() %>% 
   dplyr::select(-geometry)
 
-
-############## Birds full non mining threatened species #######################
-
-# time running time for 200 amphibians only terrestrial grids 
-bird_db <- read_csv("IUCN_data/Species_Ranges/Data/BIRDS/Bird_ranges_noGeom.csv")
-
 # read in list of mine threatened species and taxonomy
 M_sp <- read_csv("IUCN_data/Species_Pages/Raw_Data/CHORDATA_pg_Oil_Mining_threat/Chordata_Mine_threatened_assessments.csv")
 
@@ -50,12 +44,11 @@ extinct_sp <- read.csv("IUCN_data/Species_Pages/Outputs/Extinct_and_EW_sp2.csv")
 extinct_sp <- extinct_sp %>% 
   pull(binomial)
 
-# use for loop for each row
-# Attempt to fix geometry
-# ensure multiple polygons
+# ensure multiple polygons function 
 # Converting MULTISURFACE geometries to MULTIPOLYGON
 # and make geometries valid
-library(gdalUtilities)
+# This function was created by Josh O'Brien
+# https://gis.stackexchange.com/questions/389814/r-st-centroid-geos-error-unknown-wkb-type-12
 
 ensure_multipolygons <- function(X) {
   tmp1 <- tempfile(fileext = ".gpkg")
@@ -66,14 +59,13 @@ ensure_multipolygons <- function(X) {
   st_sf(st_drop_geometry(X), geometry = st_geometry(Y))
 }
 
+############## Birds all non mining threatened species #######################
+# load bird database to  
+bird_db <- read_csv("IUCN_data/Species_Ranges/Data/BIRDS/Bird_ranges_noGeom.csv")
 
-# # Set up dataframe
-# cell_Areas <- tibble(binomial = character(),
-#                      cell = integer(),
-#                      Areakm2 = double())
 
+# ---- cell area function ------ 
 sp_cell_area <- function(i) {
-  # find the cells that the range intersects 
   save <- c(20, seq(500, nrow(bird_ranges), by = 500), nrow(bird_ranges))
   species_data <- bird_ranges[i,]
   check <- st_is_valid(species_data)
@@ -81,6 +73,7 @@ sp_cell_area <- function(i) {
     species_data <- st_make_valid(species_data)
   }
   
+  # find the cells that the range intersects 
   bird_cell_intersect <- st_intersects(species_data, grid, sparse = TRUE) %>%
     unlist()
   
