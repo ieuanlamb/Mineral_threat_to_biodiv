@@ -1,5 +1,12 @@
-# SES threat raster for birds certainty raster calculation 
-# 
+# Birds species that do not have mineral extraction threat; range cell areas and raster creation 
+
+# This is essentially the same calculations a 01_Mine_thrt_Areas.R but for all species not only the ones with mineral extraction threats
+# The process took multiple runs and incorporates loops to run chunks of species at a time and then save progress
+# resulting in additional code to start the reruns from different points and commenting out of parts of code to avoid 
+# rerunning parts of the code that would be unessesary (ie species that had already been calculated)
+
+# The main way in that this code differes to 01_Mine_thrt_Areas.R and XX_All_Fish_cell_areas.R is that, due to the size of spatial range files, 
+# ranges were loading in groups from the dataset Bird_ranges_noGeom.csv without spatial data
 
 
 library(readr)
@@ -60,14 +67,17 @@ ensure_multipolygons <- function(X) {
 }
 
 ############## Birds all non mining threatened species #######################
-# load bird database to  
+# load bird database without spatial data 
+# Bird_ranges_noGeom.csv was created using HPC; loading all species ranges from Birdlife datazone https://datazone.birdlife.org/home; 
+# removing spatial data and saving as a .csv
 bird_db <- read_csv("IUCN_data/Species_Ranges/Data/BIRDS/Bird_ranges_noGeom.csv")
-
 
 # ---- cell area function ------ 
 sp_cell_area <- function(i) {
+  # create save points
   save <- c(20, seq(500, nrow(bird_ranges), by = 500), nrow(bird_ranges))
   species_data <- bird_ranges[i,]
+  # fix geometries on an individual basis 
   check <- st_is_valid(species_data)
   if(check == FALSE) {
     species_data <- st_make_valid(species_data)
