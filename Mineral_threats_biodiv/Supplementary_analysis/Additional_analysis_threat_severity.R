@@ -1,4 +1,7 @@
 # Additional analysis of species that have severity data 
+# the purpose of this script is to describe how many species are known to be impacted by mineral extraction 
+# by either having known declines: defined as "Slow, Significant Declines", "Rapid Declines", "Very Rapid Declines"  
+# or by having the majority of their range is threatened Whole (>90%)
 
 library(tidyverse)
 library(kableExtra)
