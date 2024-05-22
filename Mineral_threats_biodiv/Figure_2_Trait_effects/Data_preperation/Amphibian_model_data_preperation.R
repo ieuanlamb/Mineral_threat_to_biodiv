@@ -15,6 +15,7 @@ Names_final <- read_csv("Data/Amph_trait_model/Amphibian_final_name_matches.csv"
 Names_final$From_IUCN %>% length()
 
 # imputed amphibian traits 
+# dataset that has been checked to include species traits that fit all criteria of use within the model
 imp_trait <- read_csv("Data/Amph_trait_model/Amph_imputed_checked_final.csv")
 
 # Read in Phylogenetic distance matrix
