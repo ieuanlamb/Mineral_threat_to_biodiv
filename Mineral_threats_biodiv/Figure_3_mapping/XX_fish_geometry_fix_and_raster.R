@@ -1,21 +1,22 @@
-# fish SES script for HPC
-library(sp)
+# Fixing geometries and combining species cell area grids for fish
+
+# NOTE: Due to the size and number of fish species range sizes this operation was conducted on HPC stanage.
+
 library(readr)
 library(dplyr)
 library(tibble)
 library(sf)
 library(lqmm)
+library(sf)
+library(terra)
+library(stars)
 
-getwd()
-# setwd("X:/edwards_lab1/User/bop21ipl/IUCN_data")
-set.seed(1121995)
-
+# ------- Set up -------- 
 target_crs <- st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0 +lon_0=0")
 
 #Make bounding box to create a grid from ----
 bbox <- st_bbox(c(xmin= -17596910, ymin= -6731548, xmax= 17596910, ymax= 8748765),
                 crs = target_crs)
-
 
 #Load global spatial Land file
 world <- st_read("Species_Ranges/Data/Land/ne_50m_land_no_artic.shp",layer = "ne_50m_land_no_artic")%>%
@@ -126,7 +127,7 @@ st_write(fish_ranges_fix, file = "Species_Ranges/Data/FISH/Fish_Species_ranges_I
 glimpse(fish_ranges_fix)
 
 ## ***** Calcultate the Species cell areas on HPC stanage *****##### 
-# SCRIPT; SES_Fish_cell_areas.R
+# SCRIPT; XX_All_Fish_cell_areas.R
 
 # # Load all of the various data from back ups of the running loops. #####
 SCA1 <- read_csv("IUCN_data/Species_Ranges/Outputs/Backups/Fish_cellAreas_db3_1000.csv")
@@ -165,12 +166,9 @@ glimpse(SCAlast)
 
 length(unique(SCAlast$binomial))
 range(SCA12$rowid)
-
 length(unique(SCA13$binomial))
 range(SCA13$rowid)
-
 unique(setdiff(SCA12$binomial, SCA13$binomial))
-
 
 # Bind all rows
 SCA_all <- bind_rows(SCA1,
@@ -202,16 +200,12 @@ SCA_all <- bind_rows(SCA1,
                      SCA27,
                      SCAlast)
 
-# remove duplicates
+# remove duplicates - these may have occured from starting of loops at different points repeating calculations for some species   
 SCA_all <- SCA_all %>%
   distinct()
 
-length(unique(SCA_all$binomial)) # 21713
-
 # save dataset of all cell areas 
 write_csv(SCA_all, file = "IUCN_data/Species_Ranges/Outputs/Fish/fish_cellAreas_NONthrt_db3.csv")
-
-
 
 # # sum any multiple distinct ranges within a single cell
 fish_sp_cell_Values <- SCA_all %>%
@@ -223,8 +217,7 @@ fish_sp_cell_Values <- SCA_all %>%
   # calculate proportion of sp. range within each grid cell
   ungroup%>%
   mutate(Rng_prop_cell = Areakm2/total_Areakm2)
-
-
+                                    
 # # Create dataframe of sum of Rng_proportions_cell
 fish_cell_threat_val <- fish_sp_cell_Values %>%
   group_by(cell) %>%
@@ -236,36 +229,22 @@ fish_cell_threat_val <- fish_sp_cell_Values %>%
 
 write_csv(fish_cell_threat_val, "IUCN_data/Species_Ranges/Outputs/Fish/fish_cell_NONthrt_db3.csv")
 
-
 # create grid shapefile with threat values 
 fish_grid_ras <- left_join(grid, fish_cell_threat_val, by = "cell") %>% 
   dplyr::select(threat_val)
 
-library("RColorBrewer")
-# visualise raster
-tm_shape(world)+
-  tm_polygons()+
-  tm_shape(fish_grid_ras)+
-  tm_fill(col = "threat_val", alpha = 0.7, palette = "YlGnBu")
-
+# save as shapefile 
 st_write(fish_grid_ras, "IUCN_data/Species_Ranges/Outputs/Fish/Fish_NONtht_cert_raster3.gpkg")
 
-library(sf)
-library(terra)
-library(stars)
 #rasterize grid
 fish_Nonthrt_raster_cert <- fish_grid_ras %>% 
   st_rasterize()
-
 # write the raster of threats to all amphibian species with certainty values of the proportion each species ranges within raster pixels
 write_stars(fish_Nonthrt_raster_cert, dsn =  "IUCN_data/Species_Ranges/Outputs/Fish/Fish_NONtht_cert_raster3.tif", overwrite = TRUE)
 
 end_time <- Sys.time()
 end_time - start_time
 
-# visualise raster
-tm_shape(world)+
-  tm_polygons()+
   tm_shape(fish_Nonthrt_raster_cert)+
   tm_raster(alpha = 0.7)
 
