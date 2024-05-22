@@ -1,5 +1,4 @@
 # Fixing geometries and combining species cell area grids for fish
-
 # NOTE: Due to the size and number of fish species range sizes this operation was conducted on HPC stanage.
 
 library(readr)
@@ -123,7 +122,7 @@ fish_ranges_fix <- fish_ranges_fix %>%
   select(binomial = BINOMIAL, seasonal = SEASONAL) %>% 
   rowid_to_column(var = "rowid")
 
-# write into new dataframe 
+# write into new shapefile 
 st_write(fish_ranges_fix, file = "Species_Ranges/Data/FISH/Fish_Species_ranges_IUCN/Fish_ranges_fixed_geometries_moll.gpkg" )
 glimpse(fish_ranges_fix)
 
