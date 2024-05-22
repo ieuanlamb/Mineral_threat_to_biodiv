@@ -7,7 +7,6 @@ library(stringr)
 library(tibble)
 library(ggplot2)
 library(scales)
-library(sp)
 library(raster)
 library(sf)
 library(cowplot)
@@ -18,9 +17,8 @@ library(readr)
 library(tmap)
 library(rnaturalearth)
 
-getwd()
-setwd( "X:/edwards_lab1/User/bop21ipl")
 sf_use_s2(FALSE)
+
 # loading and collating can be bypassed by reading the All_tht_cert_Stack SEE plotting raster (not working yet)
 # plotting colours ----
 # three_col <- c( alpha("#6666AA",0.2), "#FFFFFF","#FFFF00","#FF0000")
@@ -258,7 +256,7 @@ library(cowplot)
 
 ses_map_grid <- tmap_arrange(Allsp_SES, amph_SES, bird_SES, fish_SES, mam_SES, rep_SES, ncol = 1 )
 ses_map_grid
-tmap_save(ses_map_grid, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/SES_viridis/AllSES_map_grid_viridis_ter5.jpeg", 
+tmap_save(ses_map_grid, file = "/IUCN_data/Figures/SES_viridis/AllSES_map_grid_viridis_ter5.jpeg", 
           width = 8, height = 20, dpi = 1000)
 
 
