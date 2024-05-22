@@ -5,14 +5,10 @@ library(stringr); library(dplyr);library(readr);library(ggplot2);library(tidyr)
 library(brms)
 library(lqmm)
 
-rm(list=ls())
-gc()
-
-getwd()
-setwd("X:/edwards_lab1/User/bop21ipl/Chapter_One2")
 start_time <- Sys.time()
 
 # Data ---- 
+# load species with mineral extraction threats downloaded from IUCN Red List pages 
 M_sp <- read.csv("Data/Bird_trait_model/Chordata_Mine_threatened_assessments.csv")
 
 M_sp <- M_sp %>%
@@ -85,9 +81,6 @@ data <- left_join(NONimp_trait, bird_mined, by = "species") %>%
          across(!starts_with("species"), .fns = function(x) round(x,digits = 6))) %>% 
   na.omit()
 
-
-glimpse(data)
-
 # check name matching 
 identical((data$species), colnames(bird_phylodist2))
 setdiff((data$species), colnames(bird_phylodist2))
@@ -126,13 +119,11 @@ sp_Assessed <- Names_final %>%
   filter(!From_IUCN %in% extinct_list ) %>% 
   pull(From_IUCN) %>% unique() 
 
-
 # dataset of species in model 
 sp_in_model <- Names_final %>% 
   mutate(mine_thrnd = if_else(From_IUCN %in% M_sp, 1, 0),
          species = str_replace(From_phylo, " ", "_")) %>% 
   filter(species %in% data$species) 
-
 
 # species not used 
 sp_not_used <- Names_final %>% 
@@ -140,9 +131,7 @@ sp_not_used <- Names_final %>%
          species = str_replace(From_phylo, " ", "_")) %>% 
   filter(!species %in% data$species)
 
-
 sp_not_used_list <- sp_not_used %>%  pull(From_IUCN) %>% unique()
-
 write_rds(sp_not_used_list, "Data/Bird_trait_model/Bird_species_not_used_IUCNnames.rds")
 
 
