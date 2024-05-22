@@ -47,9 +47,7 @@ extinct_sp <- extinct_sp %>%
   pull(binomial)
 
 # -------- load fish ranges with fixed geometries --------
-# Downloaded from IUCN species ranges database https://www.iucnredlist.org/search in separate taxanomic classes; combined into one dataset and 
-# geometries fixed using sf::st_buffer(0), as these shapefiles are large this takes a while and was conducted on the HPC stanage in a seperate script
-# which can be sent upon request if useful
+# Load fixed fish geometries from created in X1_All_fish_geometries_fix.R
 fish_ranges <- st_read(dsn = "data/Species_Ranges/Data/FISH/Fish_Species_ranges_IUCN/Fish_ranges_fixed_geometries_moll.gpkg" )
 
 # remove mining threatened species from the dataset (These have already been calculated see Fish_thrt_cell_areas_stan.R)
