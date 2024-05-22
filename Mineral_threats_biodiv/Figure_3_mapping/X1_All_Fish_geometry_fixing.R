@@ -11,6 +11,8 @@ library(terra)
 library(stars)
 
 # ------- Set up -------- 
+sf_use_s2(FALSE)
+
 target_crs <- st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0 +lon_0=0")
 
 #Make bounding box to create a grid from ----
