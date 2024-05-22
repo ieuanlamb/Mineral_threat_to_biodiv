@@ -6,8 +6,6 @@ library(lqmm)
 library(brms)
 
 getwd()
-# setwd("X:/edwards_lab1/User/bop21ipl")
-# setwd("/Volumes/shared/edwards_lab1/User/bop21ipl")
 # load mining threatened species
 M_sp <- read.csv("Data/Mam_trait_model/Chordata_Mine_threatened_assessments.csv")
 
