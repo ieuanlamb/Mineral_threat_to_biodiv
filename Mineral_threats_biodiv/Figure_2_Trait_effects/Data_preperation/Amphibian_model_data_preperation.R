@@ -1,12 +1,11 @@
-# Amphibian data preperation and RDS creation
-
+# Amphibian data preperation for trait modelling and RDS creation
 
 library(stringr); library(dplyr);library(readr);library(ggplot2);library(tidyr)
 library(brms)
 
-getwd()
-setwd("X:/edwards_lab1/User/bop21ipl/Chapter_One2/")
+
 # Data ---- 
+# load species with minineral extraction threats Downloaded from IUCN Red List species pages 
 M_sp <- read_csv("Data/Amph_trait_model/Chordata_Mine_threatened_assessments.csv")
 
 M_sp <- M_sp %>%
@@ -78,10 +77,7 @@ sp_not_used <- Names_final %>%
          species = str_replace(From_phylo, " ", "_")) %>% 
   filter(!species %in% data$species)
 
-
 sp_not_used_list <- sp_not_used %>%  pull(From_IUCN) %>%  unique()
 
 write_rds(sp_not_used_list, "Data/Amph_trait_model/Amph_species_not_used_IUCNnames.rds")
-
-
 
