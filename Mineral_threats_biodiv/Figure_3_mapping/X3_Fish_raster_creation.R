@@ -1,4 +1,45 @@
-# # Load all of the various data from back ups of the running loops. #####
+
+# NOTE: Due to the size and number of fish species range sizes this operation was conducted on HPC stanage.
+
+# This script contains the same processed as 02_Rasterize_Cell_Areas_dbs.R only adapted to accomodate the size and multiple files required to 
+# conduct rasterization for all fish species without mineral extraction threats. 
+
+library(readr)
+library(dplyr)
+library(tibble)
+library(sf)
+library(lqmm)
+library(sf)
+library(terra)
+library(stars)
+
+sf_use_s2(FALSE)
+
+# ------- Set up -------- 
+target_crs <- st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0 +lon_0=0")
+
+#Make bounding box to create a grid from ----
+bbox <- st_bbox(c(xmin= -17596910, ymin= -6731548, xmax= 17596910, ymax= 8748765),
+                crs = target_crs)
+
+#Load global spatial Land file
+world <- st_read("Species_Ranges/Data/Land/ne_50m_land_no_artic.shp",layer = "ne_50m_land_no_artic")%>%
+  st_transform(crs = target_crs) #Project to equal area
+
+#create a grid of 111000 size 
+grid <- st_make_grid(bbox, cellsize = c(111000, 111000)) %>%
+  st_sf() %>% 
+  mutate(cell = 1:nrow(.)) 
+
+# Get coordinates or the center of each grid cell
+world_grid_centroids <- grid %>% 
+  st_centroid() %>% 
+  mutate(x = st_coordinates(.)[,1],
+         y = st_coordinates(.)[,2]) %>% 
+  as.data.frame() %>% 
+  dplyr::select(-geometry)
+
+###### Load all of the various data from back ups of the running loops #####
 SCA1 <- read_csv("IUCN_data/Species_Ranges/Outputs/Backups/Fish_cellAreas_db3_1000.csv")
 SCA2 <- read_csv("IUCN_data/Species_Ranges/Outputs/Backups/Fish_cellAreas_db3_2000.csv")
 SCA3 <- read_csv("IUCN_data/Species_Ranges/Outputs/Backups/Fish_cellAreas_db3_3000.csv")
