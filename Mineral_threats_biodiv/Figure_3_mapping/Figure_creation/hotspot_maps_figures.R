@@ -1,7 +1,7 @@
 # Plotting the hotspot maps for species threatened by mining
 #
 # using rasters for Amphibians, Birds, Fish, Mammals, Reptiles from script Loop_for_cert_rasters 
-#  ieuan lamb
+# 
 # 
 library(tidyverse)
 library(sp)
@@ -16,9 +16,6 @@ library(tmap)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(terra)
-
-getwd()
-setwd("X:/edwards_lab1/User/bop21ipl/IUCN_data/Species_Ranges/Outputs")
 
 sf_use_s2(F)
 
@@ -146,7 +143,7 @@ Allsp_thrt <- tm_shape(world)+
              legend.title.color = "transparent", legend.frame.lwd = 0
              )
 Allsp_thrt
-tmap_save(Allsp_thrt, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_value_viridis/All_species_logstd_viridis_ter_V3.jpeg", width = 8, height = 5, dpi = 1000)
+tmap_save(Allsp_thrt, file = "Figures/Threat_value_viridis/All_species_logstd_viridis_ter_V3.jpeg", width = 8, height = 5, dpi = 1000)
 
 # Amphibian threat value
 ter_amph_n0 <- ter_amph
@@ -168,7 +165,7 @@ Amph_thrt <- tm_shape(world)+
             )
 
 Amph_thrt
-tmap_save(Amph_thrt, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_value_viridis/Amphibian_viridis_ter_V3.jpeg", width = 8,height = 5, dpi = 1000)
+tmap_save(Amph_thrt, file = "Figures/Threat_value_viridis/Amphibian_viridis_ter_V3.jpeg", width = 8,height = 5, dpi = 1000)
 
 # Bird threat value
 ter_bird_n0 <- ter_bird
@@ -183,7 +180,7 @@ Bird_thrt <- tm_shape(world)+
             legend.title.color = "transparent"
   )
 Bird_thrt
-tmap_save(Bird_thrt, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_value_viridis/Bird_viridis_ter_V3.jpeg", width = 8,height = 5, dpi = 1000)
+tmap_save(Bird_thrt, file = "Figures/Threat_value_viridis/Bird_viridis_ter_V3.jpeg", width = 8,height = 5, dpi = 1000)
 
 # Fish threat value
 ter_fish_n0 <- ter_fish
@@ -198,7 +195,7 @@ Fish_thrt <- tm_shape(world)+
             legend.title.color = "transparent"
   )
 Fish_thrt
-tmap_save(Fish_thrt, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_value_viridis/Fish_viridis_ter_V3.jpeg", width = 8,height = 5, dpi = 1000)
+tmap_save(Fish_thrt, file = "Figures/Threat_value_viridis/Fish_viridis_ter_V3.jpeg", width = 8,height = 5, dpi = 1000)
 
 # Mammal threat value
 ter_mam_n0 <- ter_mam
@@ -213,7 +210,7 @@ Mam_thrt <- tm_shape(world)+
             legend.title.color = "transparent")
 Mam_thrt
 
-tmap_save(Mam_thrt, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_value_viridis/Mammal_viridis_ter_V3.jpeg", width = 8,height = 5, dpi = 1000)
+tmap_save(Mam_thrt, file = "Figures/Threat_value_viridis/Mammal_viridis_ter_V3.jpeg", width = 8,height = 5, dpi = 1000)
 
 # Reptile threat value
 ter_rep_n0 <- ter_rep
@@ -227,14 +224,14 @@ Rep_thrt <- tm_shape(world)+
   tm_layout(frame = FALSE, 
             legend.title.color = "transparent", legend.frame.lwd = 0)
 Rep_thrt
-tmap_save(Rep_thrt, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_value_viridis/Reptile_viridis_ter_V3.jpeg", width = 8,height = 5, dpi = 1000)
+tmap_save(Rep_thrt, file = "Figures/Threat_value_viridis/Reptile_viridis_ter_V3.jpeg", width = 8,height = 5, dpi = 1000)
 
 # combing plots 
 library(cowplot)
 
 map_grid <- tmap_arrange(Allsp_thrt, Amph_thrt, Bird_thrt,Fish_thrt, Mam_thrt, Rep_thrt, ncol = 1 )
 map_grid
-tmap_save(map_grid, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_value_viridis/All_map_grid_viridis_ter_V3.jpeg", 
+tmap_save(map_grid, file = "Figures/Threat_value_viridis/All_map_grid_viridis_ter_V3.jpeg", 
           width = 8, height = 20, dpi = 1000)
 
 
@@ -314,7 +311,7 @@ allsphotspot <- tm_shape(world)+
             legend.show = FALSE
             )
 allsphotspot
-tmap_save(allsphotspot, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_hotspots_method2/All_sp_hotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
+tmap_save(allsphotspot, file = "Figures/Threat_hotspots_method2/All_sp_hotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
 
 # Amphibians
 amphhotspot <- tm_shape(world)+
@@ -330,7 +327,7 @@ amphhotspot <- tm_shape(world)+
             legend.show = FALSE
             )
 amphhotspot
-# tmap_save(amphhotspot, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_hotspots_method2/Amph_sphotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
+# tmap_save(amphhotspot, file = "Figures/Threat_hotspots_method2/Amph_sphotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
 dev.off()
 getwd()
 
@@ -347,7 +344,7 @@ birdsphotspot <- tm_shape(world)+
             legend.title.color = "transparent",
             legend.show = FALSE)
 birdsphotspot
-tmap_save(birdsphotspot, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_hotspots_method2/Bird_sphotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
+tmap_save(birdsphotspot, file = "Figures/Threat_hotspots_method2/Bird_sphotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
 
 # Fish
 fishsphotspot <- tm_shape(world)+
@@ -362,7 +359,7 @@ fishsphotspot <- tm_shape(world)+
             legend.title.color = "transparent",
             legend.show = FALSE)
 fishsphotspot
-tmap_save(fishsphotspot, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_hotspots_method2/Fish_sphotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
+tmap_save(fishsphotspot, file = "Figures/Threat_hotspots_method2/Fish_sphotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
 
 # Reptiles
 repsphotspot <- tm_shape(world)+
@@ -377,7 +374,7 @@ repsphotspot <- tm_shape(world)+
             legend.title.color = "transparent",
             legend.show = FALSE)
 repsphotspot
-tmap_save(repsphotspot, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_hotspots_method2/Reptile_sphotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
+tmap_save(repsphotspot, file = "Figures/Threat_hotspots_method2/Reptile_sphotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
 
 # Mammals
 mamsphotspot <- tm_shape(world)+
@@ -393,7 +390,7 @@ mamsphotspot <- tm_shape(world)+
             legend.show = FALSE
             )
 mamsphotspot
-tmap_save(mamsphotspot, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_hotspots_method2/Mammal_sphotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
+tmap_save(mamsphotspot, file = "Figures/Threat_hotspots_method2/Mammal_sphotspot_ter2_no_lab.jpeg", width = 8,height = 5, dpi = 1000)
 
 # plot only the legend horizontally
 legend_only <- tm_shape(world)+
@@ -413,7 +410,7 @@ legend_only <- tm_shape(world)+
 
 legend_only
 
-tmap_save(legend_only, file = "X:/edwards_lab1/User/bop21ipl/IUCN_data/Figures/Threat_hotspots_method2/Legend_only_Horz2.jpeg", width = 3,height = 1, dpi = 1000)
+tmap_save(legend_only, file = "Figures/Threat_hotspots_method2/Legend_only_Horz2.jpeg", width = 3,height = 1, dpi = 1000)
 
 
 
