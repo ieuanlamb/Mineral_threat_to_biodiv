@@ -1,12 +1,18 @@
-# Script for SES Maps Rasters 
+# Script for standardised Maps Rasters 
 
-library(sp)
+# This script aims to calculate the area of each species range within each global 110x110km grid cell for every Amphibian, Mammal and Reptile that does
+# not have any mineral extraction threats, and then create weighted scores of potential threat and convert then into a raster. The purpose of this is to 
+# create a underlying value of biodiversity that is range size weighted to standardise the threat scores.
+# The processes and aims are the same as in 01_Mine_thrt_Areas.R and 02_Rasterize_Cell_Areas_dbs.R. However, here - due to the size of opperation and 
+# memory required for all species ranges - I have used for loops to save the opperation after running chunks of species at a time.
+# This means some of the code is commented out and other parts have been added to accomodate when the loop has crashed and has been resarted from different
+# save points.
+# NOTE: FOR CLEARER CODE OF THE SAME PROCESSES BUT FOR LESS SPECIES REFER TO 01_Mine_thrt_Areas.R and 02_Rasterize_Cell_Areas_dbs.R.
+
 library(raster)
 library(tibble); library(stringr); library(dplyr); library(readr);library(ggplot2);library(tidyr)
 library(sf)
 library(viridis)
-library(rgeos)
-library(rgbif)
 library(ggtext)
 library(tmap)
 library(rnaturalearth)
@@ -15,12 +21,10 @@ library(stars)
 library(lqmm)
 library("RColorBrewer")
 
-
-getwd()
-setwd("X:/edwards_lab1/User/bop21ipl/IUCN_data")
-set.seed(1121995)
+# ------ Set Up ------
 sf_use_s2(FALSE)
 
+# set mollwiede crs 
 target_crs <- st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0 +lon_0=0")
 
 #Make bounding box to create a grid from ----
@@ -28,23 +32,16 @@ bbox <- st_bbox(c(xmin= -17596910, ymin= -6731548, xmax= 17596910, ymax= 8748765
                 crs = target_crs)
 
 #Load global spatial Land file
-# world <- st_read("Species_Ranges/Data/Land/ne_50m_land_no_artic.shp",layer = "ne_50m_land_no_artic")%>%
-#   st_transform(crs ="+proj=cea +datum=WGS84") #Project to equal area
-# extent(world)
-
-#Load global spatial Land file
 world <- ne_countries(scale = "medium", returnclass = "sf") %>%
   st_make_valid() %>%
   filter(continent != "Antarctica") %>% 
   st_transform(crs = target_crs)
-
 
 #create a grid of 111000 size 
 grid <- st_make_grid(bbox, cellsize = c(111000, 111000)) %>%
   st_sf() %>% 
   mutate(cell = 1:nrow(.))  %>% 
   st_transform(crs = target_crs)  
-
 
 # Get coordinates or the center of each grid cell
 world_grid_centroids <- grid %>% 
@@ -54,24 +51,13 @@ world_grid_centroids <- grid %>%
   as.data.frame() %>% 
   dplyr::select(-geometry)
 
-# Select only terrestrial cells for now
-grid_test <- grid %>%
-  st_intersection(world) %>%
-  rowid_to_column(var = "cell2")
+# read in list of mine threatened species and taxonomy
+M_sp <- read_csv("Species_Pages/Raw_Data/CHORDATA_pg_Oil_Mining_threat/Chordata_Mine_threatened_assessments.csv")
 
-# Get coordinates or the center of each TERRESTRIAL grid cell
-terst_grid_centroids <- grid_test %>%
-  st_centroid() %>%
-  mutate(x = st_coordinates(.)[,1],
-         y = st_coordinates(.)[,2]) %>%
-  as.data.frame() %>%
-  dplyr::select(-geometry)
-
-# check mapping 
-tm_shape(world)+ 
-  tm_polygons()+
-  tm_shape(grid_test)+
-  tm_borders()
+# read list of extinct species 
+extinct_sp <- read_csv("Species_Pages/Outputs/Extinct_and_EW_sp2.csv")
+extinct_sp <- extinct_sp %>% 
+  pull(binomial)
 
 ############## Ampnibians full non mining threatened species #######################
 
@@ -82,16 +68,7 @@ Amph_ranges <- st_transform(Amph_ranges, crs = target_crs)
 Amph_ranges <- Amph_ranges %>% 
   rowid_to_column(var = "rowid")
 
-# remove species threatened by mining 
-# read in list of mine threatened species and taxonomy
-M_sp <- read_csv("Species_Pages/Raw_Data/CHORDATA_pg_Oil_Mining_threat/Chordata_Mine_threatened_assessments.csv")
-
-# read list of extinct species 
-extinct_sp <- read_csv("Species_Pages/Outputs/Extinct_and_EW_sp2.csv")
-extinct_sp <- extinct_sp %>% 
-  pull(binomial)
-
-# remove mining threatened species from the dataset
+# remove mining threatened species and extinct from the dataset
 Amph_ranges <- Amph_ranges %>% 
   filter(!binomial %in% M_sp,
          seasonal != 4,
@@ -123,7 +100,6 @@ cell_Areas <- tibble(binomial = character(),
 # first loop ran to save point 6000
 Amph_ranges_T[6000:6001,]
 
-
 # use for loop for each row
 for(i in 6001:nrow(Amph_ranges_T)) {
   # find the cells that the range intersects 
@@ -153,9 +129,7 @@ for(i in 6001:nrow(Amph_ranges_T)) {
   print(i)
 }
 
-
 write_csv(cell_Areas, paste0("Species_Ranges/Outputs/Backups/Amph_cellAreas_db4_6000_8571.csv"))
-
 cell_Areas1 <- read_csv("Species_Ranges/Outputs/Backups/Amph_cellAreas_db4_6000.csv")
 
 # join two datasets of file running
@@ -165,9 +139,7 @@ cell_Areas_full <- cell_Areas_full %>%
   distinct()
 #write
 write_csv(cell_Areas_full, paste0("Species_Ranges/Outputs/Backups/Amph_cellAreas_db4_Full8571.csv"))
-
 cell_Areas_full <- read_csv( "Species_Ranges/Outputs/Backups/Amph_cellAreas_db4_Full8571.csv")
-
 
 # check that all species are included within the cell area database
 length(unique(cell_Areas_full$binomial)) #7121
@@ -184,7 +156,6 @@ amph_sp_cell_Values <- cell_Areas_full %>%
   ungroup%>%
   mutate(Rng_prop_cell = Areakm2/total_Areakm2)
 
-
 # Create dataframe of sum of Rng_proportions_cell
 amph_cell_threat_val <- amph_sp_cell_Values %>%
   group_by(cell) %>%
@@ -194,8 +165,6 @@ amph_cell_threat_val <- amph_sp_cell_Values %>%
   arrange(-x)%>%
   dplyr::select(cell,x,y, threat_val) %>% 
   arrange(cell)
-
-# amph_Nonthrt_raster_cert <- rasterFromXYZ(amph_cell_threat_val, res = 111000)
 
 # create grid shapefile with threat values 
 amph_grid_ras <- left_join(grid, amph_cell_threat_val, by = "cell") %>% 
@@ -208,25 +177,18 @@ tm_shape(world)+
   tm_shape(amph_grid_ras)+
   tm_fill(col = "threat_val", alpha = 0.7, palette = "YlGnBu")
 
+# Save as Shapefile
 st_write(amph_grid_ras, "Species_Ranges/Outputs/Amphibians/Amph_NONtht_cert_raster3.gpkg")
 
 #rasterize grid
 amph_Nonthrt_raster_cert <- amph_grid_ras %>% 
   st_rasterize()
-
-
 # write the raster of threats to all amphibian species with certainty values of the proportion each species ranges within raster pixels
 write_stars(amph_Nonthrt_raster_cert, dsn = "Species_Ranges/Outputs/Amphibians/Amph_NONtht_cert_raster3.tif", overwrite = TRUE)
 
 end_time <- Sys.time()
 end_time - start_time
 # Time difference of 48.34403 mins
-
-# visualise raster
-tm_shape(world)+
-  tm_polygons()+
-  tm_shape(amph_Nonthrt_raster_cert)+
-  tm_raster(alpha = 0.7)
 
 # Find SES raster by dividing threatened raster score by total score -------
 Amph_threat_ras <- raster("Species_Ranges/Outputs/Amphibians/Amph_tht_cert_raster3.tif")
@@ -264,231 +226,6 @@ tm_shape(world)+
   tm_layout(main.title = "Amphibians")
   
 
-############## Birds full non mining threatened species #######################
-# currently using HPC in order to cope with the large spatial data files-----
-{# 
-  # 
-  # # time running time for 200 amphibians only terrestrial grids 
-  # bird_db <- read.csv("IUCN_data/Species_Ranges/Data/BIRDS/Bird_ranges_noGeom.csv")
-  # 
-  # # read in list of mine threatened species and taxonomy
-  # M_sp <- read.csv("IUCN_data/Species_Pages/Raw_Data/CHORDATA_pg_Oil_Mining_threat/Chordata_Mine_threatened/assessments.csv")
-  # 
-  # # use for loop for each row
-  # # Attempt to fix geometry
-  # # ensure multiple polygons
-  # # Converting MULTISURFACE geometries to MULTIPOLYGON
-  # # and make geometries valid
-  # library(gdalUtilities)
-  # 
-  # ensure_multipolygons <- function(X) {
-  #   tmp1 <- tempfile(fileext = ".gpkg")
-  #   tmp2 <- tempfile(fileext = ".gpkg")
-  #   st_write(X, tmp1)
-  #   ogr2ogr(tmp1, tmp2, f = "GPKG", nlt = "MULTIPOLYGON")
-  #   Y <- st_read(tmp2)
-  #   st_sf(st_drop_geometry(X), geometry = st_geometry(Y))
-  # }
-  # 
-  # 
-  # # # Set up dataframe
-  # # cell_Areas <- tibble(binomial = character(),
-  # #                      cell = integer(),
-  # #                      Areakm2 = double())
-  # 
-  # sp_cell_area <- function(i) {
-  #   # find the cells that the range intersects 
-  #   save <- c(20, seq(500, nrow(bird_ranges), by = 500), nrow(bird_ranges))
-  #   species_data <- bird_ranges[i,]
-  #   check <- st_is_valid(species_data)
-  #   if(check == FALSE) {
-  #     species_data <- st_make_valid(species_data)
-  #   }
-  #   
-  #   bird_cell_intersect <- st_intersects(species_data, grid, sparse = TRUE) %>%
-  #     unlist()
-  #   
-  #   # extract only grid cells that the species intersects with
-  #   sp_grid <- grid %>%
-  #     filter(cell %in% bird_cell_intersect)
-  #   
-  #   # find area of the species' range within the grids
-  #   sp_cell_intersection <- st_intersection(species_data, sp_grid)
-  #   
-  #   #calculate shape area within each cell
-  #   sp_cell_Area  <- sp_cell_intersection %>%
-  #     mutate(Areakm2 = units::set_units(sf::st_area(geometry),"km^2"),
-  #            Areakm2 = as.numeric(Areakm2))%>%
-  #     tibble()%>%
-  #     dplyr::select( binomial, rowid, cell, Areakm2)
-  #   
-  #   # cell_Areas <- bind_rows(cell_Areas, sp_cell_Area)
-  #   
-  #   if(i %in% save){
-  #     # write_csv(cell_Areas, paste0("IUCN_data/Species_Ranges/Outputs/Backups/Bird_cellAreas_grp",j,"db_",i,".csv"))
-  #     print(i)
-  #     end_time <- Sys.time()
-  #     print("processing time to save point")
-  #     print(end_time - start_time2)
-  #   }
-  #   
-  #   return(sp_cell_Area)
-  # }
-  # 
-  # # groups of Bird range data by file. 
-  # 
-  # # groups <- c("1_3999" , "4000_7999", "8000_11999", "12000_15999", "16000_17572") first HPC run saves groups 1 and 2 
-  # # groups <- c("8000_11999", "12000_15999", "16000_17572")
-  # groups <- c("12000_15999", "16000_17572")
-  # for(j in groups){ 
-  #   
-  #   start_time <- Sys.time()
-  #   print(paste0(start_time,"start loop ",j))
-  #   # second attempt using ssubsets of bird ranges in Shapefiles
-  #   bird_ranges <- read_sf(paste0("data/BIRDS/Bird_Ranges_",j,".gpkg" )) %>%
-  #     st_transform(crs = "+proj=cea +datum=WGS84")
-  #   glimpse(bird_ranges)
-  #   
-  #   # bird_ranges <- bird_ranges[1:100,] # Time for 100  = 9 mins
-  #   # bird_ranges <- bird_ranges[1:10,] # 
-  #   bird_ranges <- bird_ranges %>% 
-  #     rowid_to_column(var = "rowid")
-  #   
-  #   # remove mining threatened species from the dataset
-  #   bird_ranges <- bird_ranges %>% 
-  #     filter(!binomial %in% M_sp,
-  #            seasonal != 4)
-  #   bird_ranges <- bird_ranges %>%
-  #     select(rowid, SISID, binomial, geometry = geom)
-  #   
-  #   bird_ranges <- ensure_multipolygons(bird_ranges) 
-  #   
-  #   bird_ranges <- bird_ranges %>% 
-  #     st_simplify(10000, preserveTopology = TRUE)
-  #   
-  #   # data wrangling time
-  #   end_time <- Sys.time()
-  #   print("data wrangling time")
-  #   print(end_time - start_time)
-  #   
-  #   # time running time for processing
-  #   start_time2 <- Sys.time()
-  #   
-  #   cell_Areas_full <- bind_rows(lapply(1:nrow(bird_ranges), sp_cell_area))
-  #   write_csv(cell_Areas_full, paste0("IUCN_data/Species_Ranges/Outputs/Backups/Bird_cellAreas_db_",j,".csv"))
-  #   
-  #   # processing time
-  #   end_time <- Sys.time()
-  #   print("processing time for j")
-  #   print(end_time - start_time2)
-  #   
-  #   print(j)
-  #   end_time <- Sys.time()
-  #   print("whole loop")
-  #   print(end_time - start_time)
-  # }
-  # 
-  # 
-  # # compiling cell threat values data sets to create raster #####
-  # # not for the HPC
-  # library(raster)
-  # library(tmap)
-  # 
-  # # load all data sets
-  # bird_sp_cell_1 <- read_csv("IUCN_data/Species_Ranges/Outputs/Backups/Bird_cellAreas_db_1_3999.csv")
-  # bird_sp_cell_2 <- read_csv("IUCN_data/Species_Ranges/Outputs/Backups/Bird_cellAreas_db_4000_7999.csv")
-  # bird_sp_cell_3 <- read_csv("IUCN_data/Species_Ranges/Outputs/Backups/Bird_cellAreas_db_8000_11999.csv")
-  # bird_sp_cell_4 <- read_csv("IUCN_data/Species_Ranges/Outputs/Backups/Bird_cellAreas_db_12000_15999.csv")
-  # bird_sp_cell_5 <- read_csv("IUCN_data/Species_Ranges/Outputs/Backups/Bird_cellAreas_db_16000_17572.csv")
-  # 
-  # cell_Areas <- bind_rows(bird_sp_cell_1, bird_sp_cell_2, bird_sp_cell_3, bird_sp_cell_4, bird_sp_cell_5) %>% 
-  #   select(-rowid) %>% 
-  #   distinct() # removes 1,060 rows
-  # 
-  # # # sum any multiple distinct ranges within a single cell
-  # bird_sp_cell_Values <- cell_Areas %>%
-  #   group_by(binomial,cell) %>%
-  #   summarise(Areakm2 = sum(Areakm2))%>%
-  #   # Add total species range column
-  #   group_by(binomial) %>%
-  #   mutate(total_Areakm2 = sum(Areakm2))%>%
-  #   # calculate proportion of sp. range within each grid cell
-  #   ungroup %>%
-  #   mutate(Rng_prop_cell = Areakm2/total_Areakm2)
-  # 
-  # # # Create dataframe of sum of Rng_proportions_cell
-  # bird_cell_threat_val <- bird_sp_cell_Values %>%
-  #   group_by(cell) %>%
-  #   summarise(threat_val = sum(Rng_prop_cell)) %>%
-  #   full_join(world_grid_centroids, by  = "cell")%>%
-  #   mutate(threat_val = if_else(is.na(threat_val), 0, threat_val)) %>%
-  #   arrange(-x)%>%
-  #   dplyr::select(x,y, threat_val)
-  # 
-  # range(bird_cell_threat_val$threat_val)
-  # 
-  # write_csv(bird_cell_threat_val, paste0("IUCN_data/Species_Ranges/Outputs/Birds/bird_cell_NONthrt_db_",j,".csv"))
-  # 
-  # # create a raster of the coordinates
-  # bird_NONthreat_ras <- rasterFromXYZ(bird_cell_threat_val, res = 111000, crs = "+proj=cea +datum=WGS84")
-  # 
-  # writeRaster(bird_NONthreat_ras, filename = "IUCN_data/Species_Ranges/Outputs/Birds/bird_NONtht_cert_raster.tif", overwrite = TRUE)
-  # 
-  # # visualise raster
-  # tm_shape(world)+
-  #   tm_polygons()+
-  #   tm_shape(bird_NONthreat_ras)+
-  #   tm_raster(alpha = 0.7)
-  # 
-  # 
-}
-# Find SES raster by dividing threatened raster score by total score -------
-Bird_threat_ras <- raster("Species_Ranges/Outputs/Birds/Bird_tht_cert_raster.tif")
-Bird_NONth_ras <- raster("Species_Ranges/Outputs/Birds/Bird_NONtht_cert_raster.tif")
-
-# visialise maps 
-tm_shape(world)+
-  tm_fill()+
-  tm_shape(Bird_threat_ras)+
-  tm_raster()
-
-tm_shape(world)+
-  tm_fill()+
-  tm_shape(Bird_NONth_ras)+
-  tm_raster()
-
-# join rasters in stack  
-bird_stack <- stack(Bird_threat_ras, Bird_NONth_ras)
-
-# find total value of species certainty 
-bird_stack$Bird_Sum_cert <- sum(bird_stack)
-
-# divide threatened species certainty values by total
-bird_stack$SES <- (bird_stack$Bird_tht_cert_raster/ bird_stack$Bird_Sum_cert)
-crs(bird_stack) <- crs(world)
-#different extent so clip whole stack
-# clip to terrestrial landmass
-bird_stack_ter <- crop(bird_stack, world)
-bird_stack_ter <- mask(bird_stack, world)
-
-tm_shape(world)+
-  tm_fill()+
-  tm_shape(bird_stack)+
-  tm_raster()
-
-tm_shape(world)+
-  tm_fill()+
-  tm_shape(bird_stack_ter)+
-  tm_raster() +
-  tm_layout(main.title = "Birds")
-
-tm_shape(world)+
-  tm_fill()+
-  tm_shape(bird_stack_ter$SES)+
-  tm_raster() +
-  tm_layout(main.title = "Birds")
-
-
 ############## Reptiles full non mining threatened species #######################
 
 # load spatial data of species 
@@ -497,15 +234,6 @@ Rep_ranges <- st_read("Species_Ranges/Data/REPS/REPTILES_ALL_09.12.21/REPTILES.s
 Rep_ranges <- st_transform(Rep_ranges, crs =target_crs)
 Rep_ranges <- Rep_ranges %>% 
   rowid_to_column(var = "rowid")
-
-# remove species threatened by mining 
-# read in list of mine threatened species and taxonomy
-M_sp <- read_csv("Species_Pages/Raw_Data/CHORDATA_pg_Oil_Mining_threat/Chordata_Mine_threatened_assessments.csv")
-
-# read list of extinct species 
-extinct_sp <- read_csv("Species_Pages/Outputs/Extinct_and_EW_sp2.csv")
-extinct_sp <- extinct_sp %>% 
-  pull(binomial)
 
 # remove mining threatened species from the dataset
 Rep_ranges <- Rep_ranges %>% 
@@ -525,21 +253,18 @@ tm_shape(world)+
   tm_shape(Rep_ranges_T[1:100,])+
   tm_polygons(col = "red")
 
-
 # save points
 save <- c(seq(1000, length(unique(Rep_ranges_T$binomial)), by = 1000),length(unique(Rep_ranges_T$binomial)))
 save_point <- Rep_ranges_T$binomial[save]
-
 
 # Set up dataframe
 cell_Areas <- tibble(binomial = character(),
                      cell = integer(), 
                      Areakm2 = double())
+
 # use for loop for each row
-
-# time running time for 
+# time running 
 start_time <- Sys.time()
-
 for(i in 1:nrow(Rep_ranges_T)) {
   # find the cells that the range intersects 
   rep_cell_intersect <- st_intersects(Rep_ranges_T[i,], grid, sparse = TRUE) %>%
@@ -569,12 +294,10 @@ for(i in 1:nrow(Rep_ranges_T)) {
 }
 
 write_csv(cell_Areas, paste0("Species_Ranges/Outputs/Backups/Rep_cellAreas_db3_full8484.csv"))
-
 cell_Areas <- read_csv("Species_Ranges/Outputs/Backups/Rep_cellAreas_db3_full8484.csv")
 
 length(unique(cell_Areas$binomial)) #8484
 length(unique(Rep_ranges_T$binomial))
-
 end_time <- Sys.time()
 end_time - start_time
 
@@ -589,7 +312,6 @@ rep_sp_cell_Values <- cell_Areas %>%
   ungroup%>%
   mutate(Rng_prop_cell = Areakm2/total_Areakm2)
 
-
 # Create dataframe of sum of Rng_proportions_cell
 rep_cell_threat_val <- rep_sp_cell_Values %>%
   group_by(cell) %>%
@@ -599,38 +321,22 @@ rep_cell_threat_val <- rep_sp_cell_Values %>%
   arrange(-x)%>%
   dplyr::select(x,y, threat_val, cell)
 
-
 # create grid shapefile with threat values 
 rep_grid_ras <- left_join(grid, rep_cell_threat_val, by = "cell") %>% 
   select(threat_val)
 
-# visualise raster
-tm_shape(world)+
-  tm_polygons()+
-  tm_shape(rep_grid_ras)+
-  tm_fill(col = "threat_val", alpha = 0.7, palette = "YlGnBu")
-
+# save as shapefile
 st_write(rep_grid_ras, "Species_Ranges/Outputs/Reptiles/Rep_NONtht_cert_raster3.gpkg")
 
 #rasterize grid
 rep_Nonthrt_raster_cert <- rep_grid_ras %>% 
   st_rasterize()
-
-
 # write the raster of threats to all amphibian species with certainty values of the proportion each species ranges within raster pixels
 write_stars(rep_Nonthrt_raster_cert, dsn = "Species_Ranges/Outputs/Reptiles/Rep_NONtht_cert_raster3.tif", overwrite = TRUE)
 
-
-# visualise raster
-tm_shape(world)+
-  tm_polygons()+
-  tm_shape(rep_Nonthrt_raster_cert)+
-  tm_raster(alpha = 0.7)
-
-
 # Find SES raster by dividing threatened raster score by total score -------
-Rep_threat_ras <- raster("Species_Ranges/Outputs/Reptiles/Reps_tht_cert_raster.tif")
-Rep_NONth_ras <- raster("Species_Ranges/Outputs/Reptiles/Rep_NONtht_cert_raster.tif")
+Rep_threat_ras <- raster("Species_Ranges/Outputs/Reptiles/Reps_tht_cert_raster3.tif")
+Rep_NONth_ras <- raster("Species_Ranges/Outputs/Reptiles/Rep_NONtht_cert_raster3.tif")
 
 # visialise maps 
 tm_shape(world)+
@@ -671,19 +377,9 @@ tm_shape(world)+
 
 # load spatial data of species 
 mam_ranges <- st_read("Species_Ranges/Data/MAMS/MAMMALS_ALL_09.12.21/MAMMALS.shp")
-
 mam_ranges <- st_transform(mam_ranges, crs =target_crs)
 mam_ranges <- mam_ranges %>% 
   rowid_to_column(var = "rowid")
-
-# remove species threatened by mining 
-# read in list of mine threatened species and taxonomy
-M_sp <- read_csv("Species_Pages/Raw_Data/CHORDATA_pg_Oil_Mining_threat/Chordata_Mine_threatened_assessments.csv")
-
-# read list of extinct species 
-extinct_sp <- read_csv("Species_Pages/Outputs/Extinct_and_EW_sp2.csv")
-extinct_sp <- extinct_sp %>% 
-  pull(binomial)
 
 # remove mining threatened species from the dataset
 mam_ranges <- mam_ranges %>% 
@@ -703,27 +399,23 @@ tm_shape(world)+
   tm_shape(mam_ranges_T[1:100,])+
   tm_polygons(col = "red")
 
-
 # save points
 save <- c(seq(1000, length(unique(mam_ranges_T$binomial)), by = 1000),length(unique(mam_ranges_T$binomial)))
 save_point <- mam_ranges_T$binomial[save]
 
-
-# Set up dataframe
-cell_Areas <- tibble(binomial = character(),
-                     cell = integer(), 
-                     Areakm2 = double())
-# use for loop for each row
-# Attempt to fix geometry
-# check <- st_is_valid(mam_ranges_T)
-# unique(check)
-
+# check for valid geometries
+check <- st_is_valid(mam_ranges_T)
+unique(check)
+# fix geometries
 mam_ranges_T <- mam_ranges_T %>% 
   st_buffer(0)
 
-# time running time for 
+# Set up empty dataframe
+cell_Areas <- tibble(binomial = character(),
+                     cell = integer(), 
+                     Areakm2 = double())
+# time running time for loop
 start_time <- Sys.time()
-
 for(i in 33:nrow(mam_ranges_T)) {
   # find the cells that the range intersects 
   mam_cell_intersect <- st_intersects(mam_ranges_T[i,], grid, sparse = TRUE) %>%
@@ -752,17 +444,13 @@ for(i in 33:nrow(mam_ranges_T)) {
   print(c(i, cell_Areas$binomial[i]))
 }
 
-
 cell_Areas <- read_csv("Species_Ranges/Outputs/Backups/Mam_cellAreas_db3_Lastbackup.csv")
 
 length(unique(cell_Areas$binomial)) #5845
 length(unique(mam_ranges_T$binomial)) #5845
 
-
 end_time <- Sys.time()
 end_time - start_time
-
-mam_ranges_T[33,] 
 
 # sum any multiple distinct ranges within a single cell
 mam_sp_cell_Values <- cell_Areas %>%
@@ -775,7 +463,6 @@ mam_sp_cell_Values <- cell_Areas %>%
   ungroup%>%
   mutate(Rng_prop_cell = Areakm2/total_Areakm2)
 
-
 # Create dataframe of sum of Rng_proportions_cell
 mam_cell_threat_val <- mam_sp_cell_Values %>%
   group_by(cell) %>%
@@ -785,46 +472,21 @@ mam_cell_threat_val <- mam_sp_cell_Values %>%
   arrange(-x)%>%
   dplyr::select(x,y, cell, threat_val)
 
-# mam_Nonthrt_raster_cert <- rasterFromXYZ(mam_cell_threat_val, res = 111000, crs = "+proj=cea +datum=WGS84")
-# 
-# # write the raster of threats to all amphibian species with certainty values of the proportion each species ranges within raster pixels
-# writeRaster(mam_Nonthrt_raster_cert, filename = here::here("Species_Ranges", "Outputs/Mammals/Mam_NONtht_cert_raster.tif"), overwrite = TRUE)
-
-
-
 # create grid shapefile with threat values 
 mam_grid_ras <- left_join(grid, mam_cell_threat_val, by = "cell") %>% 
   select(threat_val)
 
-library("RColorBrewer")
-# visualise raster
-tm_shape(world)+
-  tm_polygons()+
-  tm_shape(mam_grid_ras)+
-  tm_fill(col = "threat_val", alpha = 0.7, palette = "YlGnBu")
-
+# write as shape file 
 st_write(mam_grid_ras, "Species_Ranges/Outputs/Mammals/Mam_NONtht_cert_raster3.gpkg")
 
 #rasterize grid
 mam_Nonthrt_raster_cert <- mam_grid_ras %>% 
   st_rasterize()
-
-
 # write the raster of threats to all amphibian species with certainty values of the proportion each species ranges within raster pixels
 write_stars(mam_Nonthrt_raster_cert, dsn = "Species_Ranges/Outputs/Mammals/Mam_NONtht_cert_raster3.tif", overwrite = TRUE)
 
-
 end_time <- Sys.time()
 end_time - start_time
-
-# visualise raster
-tm_shape(world)+
-  tm_polygons()+
-  tm_shape(mam_Nonthrt_raster_cert)+
-  tm_raster(alpha = 0.7)
-
-
-
 
 # Find SES raster by dividing threatened raster score by total score -------
 Mam_threat_ras <- raster("Species_Ranges/Outputs/Mammals/Mams_tht_cert_raster.tif")
@@ -845,11 +507,8 @@ tm_shape(world)+
 
 # join rasters in stack  
 mam_stack <- stack(Mam_threat_ras, Mam_NONth_ras)
-
-
 # find total value of species certainty 
 mam_stack$Mam_Sum_cert <- sum(mam_stack)
-
 # divide threatened species certainty values by total
 mam_stack$SES <- (mam_stack$Mams_tht_cert_raster/ mam_stack$Mam_Sum_cert)
 
@@ -1079,7 +738,4 @@ tm_shape(world)+
   tm_fill()+
   tm_shape(fish_stack_ter$SES)+
   tm_raster() +
-  tm_layout(main.title = "Mammals")
-
-
-# Find SES Raster for ALL species 
+  tm_layout(main.title = "Fish")
