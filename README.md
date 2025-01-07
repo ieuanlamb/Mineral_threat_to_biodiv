@@ -1,5 +1,7 @@
 # Mineral_threat_to_biodiv
 Global threats of extractive industries on vertebrate biodiversity 
+Ieuan P. Lamb, Michael R. Massam, Simon C. Mills, Robert G. Bryant, David P. Edwards
+https://doi.org/10.1016/j.cub.2024.06.077
 This paper forms the first chapter of my PhD thesis. It uses Bird Life and IUCN Red List international species range maps to highlight global hotspots of species with mineral extraction threats. It includes analyse the relationship between mineral extraction threat and a number species' ecological trait from Etard et al. 2020, COMBINE mammal trait (Soria et al. 2021) and rfishbase (Boettiger et al. 2023). 
 
 Abstract of the paper:
